@@ -28,17 +28,18 @@ class DynamicPromptSelector:
         return {
             "required": {
                 "file_name": (txt_files, {"default": txt_files[0] if txt_files else "No .txt files found"}),
-                "count": ("INT", {"default": 1, "min": 1, "max": 100, "step": 1}),
+                "quantidade": ("INT", {"default": 1, "min": 1, "max": 100, "step": 1}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
             }
         }
     
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("prompts",)
+    OUTPUT_IS_LIST = (True,)  # Marca a saída como lista
     FUNCTION = "select_prompts"
     CATEGORY = "text/prompts"
     
-    def select_prompts(self, file_name, count, seed):
+    def select_prompts(self, file_name, quantidade, seed):
         # Definir seed para reproduzibilidade
         random.seed(seed)
         
@@ -49,7 +50,7 @@ class DynamicPromptSelector:
         
         # Verificar se o arquivo existe
         if not os.path.exists(file_path) or file_name == "No .txt files found":
-            return ("Arquivo não encontrado ou pasta vazia",)
+            return (["Arquivo não encontrado ou pasta vazia"],)
         
         try:
             # Ler o arquivo e dividir em linhas
@@ -60,25 +61,26 @@ class DynamicPromptSelector:
             prompts = [line.strip() for line in lines if line.strip()]
             
             if not prompts:
-                return ("Arquivo vazio ou sem prompts válidos",)
+                return (["Arquivo vazio ou sem prompts válidos"],)
             
-            # Se count é 1, retornar uma string simples
-            if count == 1:
-                selected_prompt = random.choice(prompts)
-                return (selected_prompt,)
-            
-            # Se count > 1, selecionar múltiplos prompts
+            # Determinar quantos prompts selecionar
             # Se temos menos prompts que o solicitado, usar todos disponíveis
-            actual_count = min(count, len(prompts))
+            actual_count = min(quantidade, len(prompts))
             
-            # Selecionar prompts aleatórios sem repetição
-            selected_prompts = random.sample(prompts, actual_count)
+            # Selecionar prompts aleatórios
+            if actual_count == len(prompts):
+                # Se queremos todos os prompts, embaralhar a lista completa
+                selected_prompts = prompts.copy()
+                random.shuffle(selected_prompts)
+            else:
+                # Selecionar uma amostra aleatória sem repetição
+                selected_prompts = random.sample(prompts, actual_count)
             
-            # Retornar como uma lista de strings (ComfyUI vai tratar como batch)
+            # Sempre retornar como lista dentro de uma tupla
             return (selected_prompts,)
             
         except Exception as e:
-            return (f"Erro ao ler arquivo: {str(e)}",)
+            return ([f"Erro ao ler arquivo: {str(e)}"],)
 
 # Registrar o node
 NODE_CLASS_MAPPINGS = {
@@ -88,4 +90,3 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "DynamicPromptSelector": "Randomico - pageonator"
 }
-
