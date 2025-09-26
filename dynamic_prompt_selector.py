@@ -30,6 +30,7 @@ class DynamicPromptSelector:
                 "file_name": (txt_files, {"default": txt_files[0] if txt_files else "No .txt files found"}),
                 "quantidade": ("INT", {"default": 1, "min": 1, "max": 100, "step": 1}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "filtro": ("STRING", {"default": "", "multiline": False}),
             }
         }
     
@@ -39,7 +40,7 @@ class DynamicPromptSelector:
     FUNCTION = "select_prompts"
     CATEGORY = "text/prompts"
     
-    def select_prompts(self, file_name, quantidade, seed):
+    def select_prompts(self, file_name, quantidade, seed, filtro):
         # Definir seed para reproduzibilidade
         random.seed(seed)
         
@@ -60,8 +61,16 @@ class DynamicPromptSelector:
             # Filtrar linhas vazias e remover quebras de linha
             prompts = [line.strip() for line in lines if line.strip()]
             
+            # Aplicar filtro se fornecido
+            if filtro and filtro.strip():
+                filtro_lower = filtro.lower().strip()
+                prompts = [prompt for prompt in prompts if filtro_lower in prompt.lower()]
+            
             if not prompts:
-                return (["Arquivo vazio ou sem prompts válidos"],)
+                if filtro and filtro.strip():
+                    return ([f"Nenhum prompt encontrado contendo '{filtro}'"],)
+                else:
+                    return (["Arquivo vazio ou sem prompts válidos"],)
             
             # Determinar quantos prompts selecionar
             # Se temos menos prompts que o solicitado, usar todos disponíveis
